@@ -1,0 +1,899 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mx:Application backgroundAlpha="0" creationComplete="initApp()" layout="vertical" verticalAlign="middle" width="100%" xmlns:mx="http://www.adobe.com/2006/mxml">
+	<mx:Script><![CDATA[
+		import mx.controls.Alert;
+		
+		private var row_height:Number;
+        private var buttonHeight:Number=28;
+		private var helpStr:String;
+        private var innerLowerH:Number=80;
+        private var shiftSpeed:Number=333;
+        private var titleStr:String="Audio Mixer: ";
+        private var max_minutes:Number=0;
+        private var innerUpperH:Number=240;
+        private var outerW:Number=125;
+        private var panWidth:Number=80;
+        private var innerW:Number=95;
+        private var channelArr:Array;
+        private var volLevel:Array;
+		private var soundArr:Array;
+        private var volScalar:Number=10;
+        private var names:Array;
+        private var playStr:String="Play";
+        private var pauseStr:String="Pause";
+        private var resumeStr:String="Resume";
+        private var lastPosition:Number=0;
+        private var positionTimer:flash.utils.Timer;
+        public var track_count:Number;
+        private var rTime:flash.utils.Timer;
+        private var trackArr:Array;
+        private var tempPan:Array;
+        private var tempVol:Array;
+        private var soundLoaded:Array;
+        private var fTime:flash.utils.Timer;
+        private var max_seconds:Number=0;
+        private var tempLength:Number=0;
+        private var panArr:Array;
+        public var path:String="";
+        private var req:flash.net.URLRequest;
+        private var temp:Number;
+        private var volArr:Array;
+
+		public function resetAll():void
+        {
+            setAllVol();
+            setAllPan();
+            syncTrack();
+            return;
+        }
+        
+        public function stopAll():void
+        {
+            SoundMixer.stopAll();
+            allplay.enabled = true;
+            allplay.label = this.playStr;
+            trackProgress.value = 0;
+            this.positionTimer.stop();
+            this.positionTimer.reset();
+            this.rightTime.text = "-" + max_minutes + ":" + max_seconds;
+            return;
+        }
+        private function sliderUp():void
+        {
+            this.lastPosition = this.trackProgress.value;
+            resumeTrack();
+            return;
+        }
+        
+        private function trackVol(arg1:Number, arg2:mx.controls.VSlider):void
+        {
+            if (this.channelArr[(arg1 - 1)] != null) 
+            {
+                setVolume(arg1, arg2.value / volScalar);
+            }
+            return;
+        }
+        
+        private function sliderDown():void
+        {
+            this.lastPosition = this.trackProgress.value;
+            stopAll();
+            this.trackProgress.value = lastPosition;
+            return;
+        }
+
+ 		public function setAllVol():void
+        {
+            var loc1:*=NaN;
+            loc1 = 0;
+            loc1 = 0;
+            while (loc1 < this.volArr.length) 
+            {
+                this.volArr[loc1].value = this.volArr[loc1].maximum;
+                this.volLevel[loc1] = this.volArr[loc1].value;
+                loc1 = (loc1 + 1);
+            }
+            return;
+        }
+
+ 		public function setAllPan():void
+        {
+            var loc1:*=NaN;
+            loc1 = 0;
+            loc1 = 0;
+            while (loc1 < panArr.length) 
+            {
+                panArr[loc1].value = 0;
+                loc1 = (loc1 + 1);
+            }
+            return;
+        }
+        
+ 		public function checkCount(arg1:Number):void
+        {
+            var loc1:*=NaN;
+            this.main_panel.height = 580;
+            loc1 = 0;
+            if (arg1 != 6) 
+            {
+                if (arg1 != 5) 
+                {
+                    if (arg1 != 4) 
+                    {
+                        if (arg1 != 3) 
+                        {
+                            if (arg1 != 1) 
+                            {
+                                Alert.show("Warning: number of parameters is not typical");
+                            }
+                            else 
+                            {
+                                this.row6.removeAllChildren();
+                                this.row5.removeAllChildren();
+                                this.row4.removeAllChildren();
+                                this.row3.removeAllChildren();
+                                this.row2.removeAllChildren();
+                                this.row6.width = loc1;
+                                this.row5.width = loc1;
+                                this.row4.width = loc1;
+                                this.row3.width = loc1;
+                                this.row2.width = loc1;
+                            }
+                        }
+                        else 
+                        {
+                            this.row6.removeAllChildren();
+                            this.row5.removeAllChildren();
+                            this.row4.removeAllChildren();
+                            this.row6.width = loc1;
+                            this.row5.width = loc1;
+                            this.row4.width = loc1;
+                        }
+                    }
+                    else 
+                    {
+                        this.row6.removeAllChildren();
+                        this.row5.removeAllChildren();
+                        this.row6.width = loc1;
+                        this.row5.width = loc1;
+                    }
+                }
+                else 
+                {
+                    this.row6.removeAllChildren();
+                    this.row6.width = loc1;
+                }
+            }
+            return;
+        }
+
+
+ 		private function rTimerHandler(arg1:flash.events.TimerEvent):void
+        {
+            this.lastPosition = (lastPosition - 1);
+            trackProgress.value = this.lastPosition;
+            return;
+        }
+ 		private function positionTimerHandler(arg1:flash.events.TimerEvent):void
+        {
+            updateProgress();
+            return;
+        }
+ 		private function onLoadProgress(arg1:flash.events.ProgressEvent):void
+        {
+            var loc1:*=0;
+            loc1 = Math.round(100 * arg1.bytesLoaded / arg1.bytesTotal);
+            return;
+        }
+        
+		private function fTimerHandler(arg1:flash.events.TimerEvent):void
+        {
+            this.lastPosition = lastPosition + 1;
+            trackProgress.value = this.lastPosition;
+            return;
+        }
+
+ 		private function checkLoaded():Boolean
+        {
+            var loc1:*=false;
+            var loc2:*=NaN;
+            loc1 = true;
+            loc2 = 0;
+            loc2 = 0;
+            while (loc2 < this.soundLoaded.length) 
+            {
+                if (soundLoaded[loc2] == false) 
+                {
+                    loc1 = false;
+                }
+                loc2 = (loc2 + 1);
+            }
+            return loc1;
+        }
+        
+ 		private function onLoadComplete(arg1:flash.events.Event):void
+        {
+            var loc1:*=NaN;
+            var loc2:*=NaN;
+            loc1 = -1;
+            loc2 = 0;
+            loc2 = 0;
+            while (loc2 < this.soundArr.length) 
+            {
+                if (soundArr[loc2] == arg1.currentTarget) 
+                {
+                    loc1 = loc2;
+                }
+                loc2 = (loc2 + 1);
+            }
+            var loc3:*=loc1;
+            switch (loc3) 
+            {
+                case 0:
+                {
+                    pb1.visible = false;
+                    this.soundLoaded[0] = true;
+                    break;
+                }
+                case 1:
+                {
+                    pb2.visible = false;
+                    this.soundLoaded[1] = true;
+                    break;
+                }
+                case 2:
+                {
+                    pb3.visible = false;
+                    this.soundLoaded[2] = true;
+                    break;
+                }
+                case 3:
+                {
+                    pb4.visible = false;
+                    this.soundLoaded[3] = true;
+                    break;
+                }
+                case 4:
+                {
+                    pb5.visible = false;
+                    this.soundLoaded[4] = true;
+                    break;
+                }
+                case 5:
+                {
+                    pb6.visible = false;
+                    this.soundLoaded[5] = true;
+                    break;
+                }
+            }
+            if (checkLoaded()) 
+            {
+                allplay.enabled = true;
+            }
+            this.tempLength = soundArr[0].length / 1000;
+            this.max_minutes = Math.round(tempLength / 60);
+            this.max_seconds = Math.round(tempLength % 60);
+            this.leftTime.text = "0:00";
+            this.rightTime.text = "-" + max_minutes + ":" + max_seconds;
+            this.trackProgress.maximum = soundArr[0].length / 1000;
+            return;
+        }
+        
+ 		private function setVolume(arg1:Number, arg2:Number):void
+        {
+            var loc1:*=null;
+            loc1 = this.channelArr[(arg1 - 1)].soundTransform;
+            loc1.volume = arg2;
+            this.volLevel[(arg1 - 1)] = arg2;
+            this.channelArr[(arg1 - 1)].soundTransform = loc1;
+            return;
+        }
+        
+ 		private function setPan(arg1:Number, arg2:mx.controls.HSlider):void
+        {
+            var loc1:*=null;
+            if (this.channelArr[(arg1 - 1)] != null) 
+            {
+                loc1 = this.channelArr[(arg1 - 1)].soundTransform;
+                loc1.pan = arg2.value / volScalar;
+                this.channelArr[(arg1 - 1)].soundTransform = loc1;
+            }
+            return;
+        }
+        public function muteSecondary(arg1:Number, arg2:mx.controls.VSlider):void
+        {
+            var loc1:*=null;
+            loc1 = this.channelArr[(arg1 - 1)].soundTransform;
+            loc1.volume = 0;
+            this.channelArr[(arg1 - 1)].soundTransform = loc1;
+            this.volLevel[(arg1 - 1)] = arg2.value / volScalar;
+            return;
+        }
+ 		private function syncTrack():void
+        {
+            var loc1:*=NaN;
+            loc1 = 0;
+            loc1 = 0;
+            while (loc1 < soundArr.length) 
+            {
+                var loc2:*=loc1;
+                switch (loc2) 
+                {
+                    case 0:
+                    {
+                        setPan(1, t1_pan);
+                        setVolume(1, 1);
+                        if (mute1.selected) 
+                        {
+                            muteSecondary(1, t1_vol);
+                        }
+                        break;
+                    }
+                    case 1:
+                    {
+                        setPan(2, t2_pan);
+                        setVolume(2, 1);
+                        if (mute2.selected) 
+                        {
+                            muteSecondary(2, t2_vol);
+                        }
+                        break;
+                    }
+                    case 2:
+                    {
+                        setPan(3, t3_pan);
+                        setVolume(3, 1);
+                        if (mute3.selected) 
+                        {
+                            muteSecondary(3, t3_vol);
+                        }
+                        break;
+                    }
+                    case 3:
+                    {
+                        setPan(4, t4_pan);
+                        setVolume(4, 1);
+                        if (mute4.selected) 
+                        {
+                            muteSecondary(4, t4_vol);
+                        }
+                        break;
+                    }
+                    case 4:
+                    {
+                        setPan(5, t5_pan);
+                        setVolume(5, 1);
+                        if (mute5.selected) 
+                        {
+                            muteSecondary(5, t5_vol);
+                        }
+                        break;
+                    }
+                    case 5:
+                    {
+                        setPan(6, t6_pan);
+                        setVolume(6, 1);
+                        if (mute6.selected) 
+                        {
+                            muteSecondary(6, t6_vol);
+                        }
+                        break;
+                    }
+                }
+                loc1 = (loc1 + 1);
+            }
+            return;
+        }
+        
+		public function resumeTrack():void
+        {
+            var loc1:*=NaN;
+            loc1 = 0;
+            loc1 = 0;
+            while (loc1 < soundArr.length) 
+            {
+                this.channelArr[loc1] = this.soundArr[loc1].play(this.lastPosition * 1000, 0);
+                loc1 = (loc1 + 1);
+            }
+            positionTimer.start();
+            allplay.label = pauseStr;
+            syncTrack();
+            return;
+        }
+        
+   		public function playAll():void
+        {
+            var loc1:*=NaN;
+            loc1 = 0;
+            while (loc1 < channelArr.length) 
+            {
+                this.channelArr[loc1] = this.soundArr[loc1].play();
+                loc1 = (loc1 + 1);
+            }
+            allplay.label = this.pauseStr;
+            this.positionTimer.start();
+            this.rTime.stop();
+            return;
+        }
+        
+        public function pauseTrack():void
+        {
+            var loc1:*=NaN;
+            loc1 = 0;
+            this.lastPosition = channelArr[0].position / 1000;
+            positionTimer.stop();
+            allplay.label = resumeStr;
+            SoundMixer.stopAll();
+            return;
+        }
+ 		public function playCheck():void
+        {
+            var loc1:*=allplay.label;
+            switch (loc1) 
+            {
+                case playStr:
+                {
+                    playAll();
+                    break;
+                }
+                case pauseStr:
+                {
+                    pauseTrack();
+                    break;
+                }
+                case resumeStr:
+                {
+                    resumeTrack();
+                    break;
+                }
+                default:
+                {
+                    Alert.show("Error, no type for play button");
+                    break;
+                }
+            }
+            return;
+        }
+        
+ 		private function updateProgress():void
+        {
+            var loc1:*=NaN;
+            var loc2:*=NaN;
+            var loc3:*=NaN;
+            var loc4:*=NaN;
+            var loc5:*=NaN;
+            var loc6:*=NaN;
+            var loc7:*=null;
+            trackProgress.value = channelArr[0].position / 1000;
+            loc1 = Math.round(channelArr[0].position / 1000);
+            loc2 = Math.floor(loc1 / 60);
+            loc3 = loc1 % 60;
+            loc4 = Math.round(soundArr[0].length / 1000 - loc1);
+            loc5 = Math.floor(loc4 / 60);
+            if ((loc6 = loc4 % 60) == -1) 
+            {
+                loc5 = (loc5 - 1);
+                loc6 = 59;
+            }
+            loc7 = "";
+            if (loc3 < 10) 
+            {
+                loc7 = "0";
+            }
+            this.leftTime.text = "" + loc2 + ":" + loc7 + loc3;
+            if (loc6 < 10) 
+            {
+                loc7 = "0";
+            }
+            else 
+            {
+                loc7 = "";
+            }
+            this.rightTime.text = "-" + loc5 + ":" + loc7 + loc6;
+            return;
+        }
+
+  		public function muteTertiary(arg1:Number, arg2:mx.controls.VSlider, arg3:mx.controls.CheckBox):void
+        {
+            var loc1:*=null;
+            if (arg3.selected) 
+            {
+                (loc1 = this.channelArr[(arg1 - 1)].soundTransform).volume = 0;
+                this.channelArr[(arg1 - 1)].soundTransform = loc1;
+                this.volLevel[(arg1 - 1)] = arg2.value / volScalar;
+            }
+            else 
+            {
+                (loc1 = this.channelArr[(arg1 - 1)].soundTransform).volume = this.volLevel[(arg1 - 1)];
+                this.channelArr[(arg1 - 1)].soundTransform = loc1;
+            }
+            return;
+        }
+        
+		private function initLoadSounds(arg1:Number, arg2:String):void
+        {
+            this.channelArr[arg1] = new SoundChannel();
+            this.soundArr[arg1] = new Sound();
+            req = new URLRequest(path + Application.application.parameters[arg2]);
+            this.soundArr[arg1].load(req);
+            this.soundArr[arg1].addEventListener(ProgressEvent.PROGRESS, onLoadProgress);
+            this.soundArr[arg1].addEventListener(Event.COMPLETE, onLoadComplete);
+            var loc1:*=arg1;
+            switch (loc1) 
+            {
+                case 0:
+                {
+                    pb1.source = this.soundArr[0];
+                    break;
+                }
+                case 1:
+                {
+                    pb2.source = this.soundArr[1];
+                    break;
+                }
+                case 2:
+                {
+                    pb3.source = this.soundArr[2];
+                    break;
+                }
+                case 3:
+                {
+                    pb4.source = this.soundArr[3];
+                    break;
+                }
+                case 4:
+                {
+                    pb5.source = this.soundArr[4];
+                    break;
+                }
+                case 5:
+                {
+                    pb6.source = this.soundArr[5];
+                    break;
+                }
+            }
+            return;
+        }
+
+	  	public function initApp():void
+        {
+            var loc1:*=NaN;
+            var loc2:*=null;
+          //  var loc3:*=null;
+            helpStr = "Welcome to the Audio Mixer test build!\nTracks are listed, along with play, stop, pan, volume, and mute controls." + "\nControls:\nPlay All -> plays all of the tracks at once.\nStop All -> stops all the tracks at once if currently playing." + "\nM -> Mute, mutes a single track.\nU -> UnMute; unmutes a single track";
+            track_count = 0;
+            this.row_height = 100;
+            this.trackArr = new Array();
+            this.channelArr = new Array();
+            this.soundArr = new Array();
+            this.names = new Array();
+            this.volLevel = new Array();
+            this.soundLoaded = new Array();
+            this.tempPan = new Array();
+            this.tempVol = new Array();
+            loc2 = "";
+            var loc4:*=0;
+//            var loc5:*=Application.application.parameters;
+             for (var i:String in Application.application.parameters) {
+  					if (!i.match("File"))
+  					{
+  						continue;
+  					}
+  					  					
+  					track_count = (track_count+1);
+  		      }
+
+            /*for (loc3 in loc5) 
+            {
+                if (!loc3.match("File")) 
+                {
+                    continue;
+                }
+                var loc6:*;
+                var loc7:*=(track_count + 1);
+                track_count = loc7;
+            }*/
+            
+          //  loc4 = 0;
+           // loc5 = Application.application.parameters;
+            var paramNum:Number = 0;
+            
+            var basePath:String = Application.application.parameters['basePath'];
+            	
+            if (basePath !=null)
+            {
+             this.path = basePath;
+            }
+            else
+            {
+            	Alert.show("Basepath is a required parameter");
+            }
+            	
+            for (var i:String in Application.application.parameters) 
+            {
+            	
+            	
+               // loc6 = loc3;
+               //Alert.show(" parameter = " + paramNum + "," + i + "," + Application.application.parameters[i]);
+                switch (i) 
+                {
+                    case "track1Name":
+                    {
+                        this.track1Label.text = Application.application.parameters[i];
+                        break;     
+                    }
+                    case "track2Name":
+                    {
+                        this.track2Label.text = Application.application.parameters[i];
+                        break;
+                    }
+                    case "track3Name":
+                    {
+                        this.track3Label.text = Application.application.parameters[i];
+                        break;
+                    }
+                    case "track4Name":
+                    {
+                        this.track4Label.text = Application.application.parameters[i];
+                        break;
+                    }
+                    case "track5Name":
+                    {
+                        this.track5Label.text = Application.application.parameters[i];
+                        break;
+                    }
+                    case "track6Name":
+                    {
+                        this.track6Label.text = Application.application.parameters[i];
+                        break;
+                    }
+                    case "track1File":
+                    {
+                        initLoadSounds(0,  i);
+                        break;
+                    }
+                    case "track2File":
+                    {
+                        initLoadSounds(1,  i);
+                        break;
+                    }
+                    case "track3File":
+                    {
+                        initLoadSounds(2,  i);
+                        break;
+                    }
+                    case "track4File":
+                    {
+                        initLoadSounds(3,  i);
+                        break;
+                    }
+                    case "track5File":
+                    {
+                        initLoadSounds(4,  i);                        
+                   		break;
+                    }
+                    case "track6File":
+                    {
+                        initLoadSounds(5,  i);
+                        break;
+                    }
+                    case "trackTitle":
+                    {
+                        title.text = this.titleStr + "" + Application.application.parameters[i];
+                     	break;                  
+                    }
+                    case "basePath":
+                    {
+                    	//we need to get this parameter first and its required, so when you get it here, just ignore it.
+                    	break;
+                    }
+                    default:
+                    {
+                        Alert.show("Error: unknown parameter = " + paramNum);
+                        break;
+                    }
+                }
+                paramNum = paramNum+1;
+            }
+            
+            allplay.enabled = false;
+            volArr = new Array(t1_vol, t2_vol, t3_vol, t4_vol, t5_vol, t6_vol);
+            panArr = new Array(t1_pan, t2_pan, t3_pan, t4_pan, t5_pan, t6_pan);
+            setAllVol();
+            setAllPan();
+            loc1 = 0;
+            
+           /* while (loc1 < names.length) 
+            {
+                loc4 = loc1;
+                switch (loc4) 
+                {
+                    case 0:
+                    {
+                        track1Label.text = names[0].substring((temp[0] + temp[1]).length + 2, names[0].length - 6);
+                        break;
+                    }
+                    case 1:
+                    {
+                        track2Label.text = names[1].substring((temp[0] + temp[1]).length + 2, names[1].length - 6);
+                        break;
+                    }
+                    case 2:
+                    {
+                        track3Label.text = names[2].substring((temp[0] + temp[1]).length + 2, names[2].length - 6);
+                        break;
+                    }
+                    case 3:
+                    {
+                        track4Label.text = names[3].substring((temp[0] + temp[1]).length + 2, names[3].length - 6);
+                        break;
+                    }
+                    case 4:
+                    {
+                        track5Label.text = names[4].substring((temp[0] + temp[1]).length + 2, names[4].length - 6);
+                        break;
+                    }
+                    case 5:
+                    {
+                        track6Label.text = names[5].substring((temp[0] + temp[1]).length + 2, names[5].length - 6);
+                        break;
+                    }
+                }
+                this.soundLoaded[loc1] = false;
+                loc1 = (loc1 + 1);
+            }*/
+            positionTimer = new Timer(100);
+            positionTimer.addEventListener(TimerEvent.TIMER, positionTimerHandler);
+            rTime = new Timer(shiftSpeed);
+            rTime.addEventListener(TimerEvent.TIMER, rTimerHandler);
+            fTime = new Timer(shiftSpeed);
+            fTime.addEventListener(TimerEvent.TIMER, fTimerHandler);
+            checkCount(this.track_count);
+            return;
+        }
+
+    ]]></mx:Script>
+
+	<mx:Panel backgroundColor="#00656e8d" borderColor="9541811" borderStyle="solid" borderThickness="2" height="100%" id="main_panel" layout="vertical" width="100%">
+		<mx:VBox cornerRadius="0" horizontalAlign="center" verticalAlign="middle" width="100%">
+			<mx:HBox>
+				<mx:Label fontWeight="bold" id="title" styleName="h1" text="Audio Mixer"/>
+			</mx:HBox>
+			<mx:HBox verticalAlign="middle">
+				<mx:Button click="{playCheck();}" height="{this.buttonHeight}" id="allplay" label="Play" width="90"/>
+				<mx:HBox height="{this.buttonHeight}" horizontalAlign="center" id="_HBox3" styleName="innerBox2" verticalAlign="middle" backgroundColor="#FFFFFF" cornerRadius="8" borderStyle="solid">
+					<mx:Label id="leftTime" styleName="timestamp" text="0:00"/>
+					<mx:HSlider id="trackProgress" thumbPress="{sliderDown();}" thumbRelease="{sliderUp();}" width="200"/>
+					<mx:Label id="rightTime" styleName="timestamp" text="-*:**"/>
+				</mx:HBox>
+			</mx:HBox>
+		</mx:VBox>
+		<mx:HBox horizontalAlign="right" width="100%"/>
+		<mx:HBox horizontalAlign="center" id="trackPanel" styleName="trackBox" width="100%">
+			<mx:VBox height="{this.row_height}" horizontalAlign="center" id="row1" styleName="outerBox" verticalAlign="middle" width="{this.outerW}" backgroundColor="#BFBFBF" cornerRadius="19" borderStyle="solid">
+				<mx:HBox width="40%">
+					<mx:Label text="Track 1:"/>
+					<mx:Label fontWeight="bold" id="track1Label" styleName="label1" text="Track1"/>
+				</mx:HBox>
+				<mx:VBox borderStyle="solid" height="{this.innerUpperH}" horizontalAlign="center" id="_VBox3" styleName="innerBox" width="{this.innerW}" backgroundColor="#FFFFFF">								
+					<mx:Label styleName="label2" text="Volume"/>
+					<mx:VSlider change="{trackVol(1, t1_vol);}" id="t1_vol" labels="[0, 2, 4, 6, 8, 10]" maximum="10" minimum="0" tickInterval="5"/>
+					<mx:HRule width="80%"/>
+					<mx:CheckBox click="{muteTertiary(1, t1_vol, mute1);}" id="mute1" label="Mute"/>
+				</mx:VBox>
+				<mx:VBox borderStyle="solid" height="{this.innerLowerH}" horizontalAlign="center" id="_VBox4" styleName="innerBox" width="{this.innerW}" backgroundColor="#FFFFFF">
+					<mx:Label styleName="label2" text="Pan"/>
+					<mx:HSlider change="{setPan(1, t1_pan);}" id="t1_pan" labels="['L', 'C', 'R']" maximum="10" minimum="-10" tickInterval="3" width="{this.panWidth}"/>
+				</mx:VBox>
+				<mx:HBox width="75%">
+					<mx:ProgressBar id="pb1" mode="event" width="100%"/>
+				</mx:HBox>
+			</mx:VBox>
+			<mx:VBox height="{this.row_height}" horizontalAlign="center" id="row2" styleName="outerBox" verticalAlign="middle" width="{this.outerW}" backgroundColor="#BFBFBF" borderStyle="solid" cornerRadius="20">
+				<mx:HBox width="40%">
+					<mx:Label text="Track 2:"/>
+					<mx:Label fontWeight="bold" id="track2Label" styleName="label1" text="Track2"/>
+				</mx:HBox>
+				<mx:VBox borderStyle="solid" height="{this.innerUpperH}" horizontalAlign="center" id="_VBox6" styleName="innerBox" width="{this.innerW}" backgroundColor="#FFFFFF">
+					<mx:Label styleName="label2" text="Volume"/>
+					<mx:VSlider change="{trackVol(2, t2_vol);}" id="t2_vol" labels="[0, 2, 4, 6, 8, 10]" maximum="10" minimum="0" tickInterval="5"/>
+					<mx:HRule width="80%"/>
+					<mx:CheckBox click="{muteTertiary(2, t2_vol, mute2);}" id="mute2" label="Mute"/>
+				</mx:VBox>
+				<mx:VBox borderStyle="solid" height="{this.innerLowerH}" horizontalAlign="center" id="_VBox7" styleName="innerBox" width="{this.innerW}" backgroundColor="#FFFFFF">
+					<mx:Label styleName="label2" text="Pan"/>
+					<mx:HSlider change="{setPan(2, t2_pan);}" id="t2_pan" labels="['L', 'C', 'R']" maximum="10" minimum="-10" tickInterval="3" width="{this.panWidth}"/>
+				</mx:VBox>
+				<mx:HBox width="75%">
+					<mx:ProgressBar id="pb2" mode="event" width="100%"/>
+				</mx:HBox>
+			</mx:VBox>
+			<mx:VBox height="{this.row_height}" horizontalAlign="center" id="row3" styleName="outerBox" verticalAlign="middle" width="{this.outerW}" backgroundColor="#BFBFBF" borderStyle="solid" cornerRadius="20">
+				<mx:HBox width="40%">
+					<mx:Label text="Track 3:"/>
+					<mx:Label fontWeight="bold" id="track3Label" styleName="label1" text="Track3"/>
+				</mx:HBox>
+				<mx:VBox borderStyle="solid" height="{this.innerUpperH}" horizontalAlign="center" id="_VBox9" styleName="innerBox" width="{this.innerW}" backgroundColor="#FFFFFF">
+					<mx:Label styleName="label2" text="Volume"/>
+					<mx:VSlider change="{trackVol(3, t3_vol);}" id="t3_vol" labels="[0, 2, 4, 6, 8, 10]" maximum="10" minimum="0" tickInterval="5"/>
+					<mx:HRule width="80%"/>
+					<mx:CheckBox click="{muteTertiary(3, t3_vol, mute3);}" id="mute3" label="Mute"/>
+				</mx:VBox>
+				<mx:VBox borderStyle="solid" height="{this.innerLowerH}" horizontalAlign="center" id="_VBox10" styleName="innerBox" width="{this.innerW}" backgroundColor="#FFFFFF">
+					<mx:Label styleName="label2" text="Pan"/>
+					<mx:HSlider change="{setPan(3, t3_pan);}" id="t3_pan" labels="['L', 'C', 'R']" maximum="10" minimum="-10" tickInterval="3" width="{this.panWidth}"/>
+				</mx:VBox>
+				<mx:HBox width="75%">
+					<mx:ProgressBar id="pb3" mode="event" width="100%"/>
+				</mx:HBox>
+			</mx:VBox>
+			<mx:VBox height="{this.row_height}" horizontalAlign="center" id="row4" styleName="outerBox" verticalAlign="middle" width="{this.outerW}" backgroundColor="#BFBFBF" borderStyle="solid" cornerRadius="20">
+				<mx:HBox width="40%">
+					<mx:Label text="Track 4:"/>
+					<mx:Label fontWeight="bold" id="track4Label" styleName="label1" text="Track4"/>
+				</mx:HBox>
+				<mx:VBox borderStyle="solid" height="{this.innerUpperH}" horizontalAlign="center" id="_VBox12" styleName="innerBox" width="{this.innerW}" backgroundColor="#FFFFFF">
+					<mx:Label styleName="label2" text="Volume"/>
+					<mx:VSlider change="{trackVol(4, t4_vol);}" id="t4_vol" labels="[0, 2, 4, 6, 8, 10]" maximum="10" minimum="0" tickInterval="5"/>
+					<mx:HRule width="80%"/>
+					<mx:CheckBox click="{muteTertiary(4, t4_vol, mute4);}" id="mute4" label="Mute"/>
+				</mx:VBox>
+				<mx:VBox borderStyle="solid" height="{this.innerLowerH}" horizontalAlign="center" id="_VBox13" styleName="innerBox" width="{this.innerW}" backgroundColor="#FFFFFF">
+					<mx:Label styleName="label2" text="Pan"/>
+					<mx:HSlider change="{setPan(4, t4_pan);}" id="t4_pan" labels="['L', 'C', 'R']" maximum="10" minimum="-10" tickInterval="3" width="{this.panWidth}"/>
+				</mx:VBox>
+				<mx:HBox width="75%">
+					<mx:ProgressBar id="pb4" mode="event" width="100%"/>
+				</mx:HBox>
+			</mx:VBox>
+			<mx:VBox height="{this.row_height}" horizontalAlign="center" id="row5" styleName="outerBox" verticalAlign="middle" width="{this.outerW}" backgroundColor="#BFBFBF" borderStyle="solid" cornerRadius="20">
+				<mx:HBox width="40%">
+					<mx:Label text="Track 5:"/>
+					<mx:Label fontWeight="bold" id="track5Label" styleName="label1" text="Track5"/>
+				</mx:HBox>
+				<mx:VBox borderStyle="solid" height="{this.innerUpperH}" horizontalAlign="center" id="_VBox15" styleName="innerBox" width="{this.innerW}" backgroundColor="#FFFFFF">
+					<mx:Label styleName="label2" text="Volume"/>
+					<mx:VSlider change="{trackVol(5, t5_vol);}" id="t5_vol" labels="[0, 2, 4, 6, 8, 10]" maximum="10" minimum="0" tickInterval="5"/>
+					<mx:HRule width="80%"/>
+					<mx:CheckBox click="{muteTertiary(5, t5_vol, mute5);}" id="mute5" label="Mute"/>
+				</mx:VBox>
+				<mx:VBox borderStyle="solid" height="{this.innerLowerH}" horizontalAlign="center" id="_VBox16" styleName="innerBox" width="{this.innerW}" backgroundColor="#FFFFFF">
+					<mx:Label styleName="label2" text="Pan"/>
+					<mx:HSlider change="{setPan(5, t5_pan);}" id="t5_pan" labels="['L', 'C', 'R']" maximum="10" minimum="-10" tickInterval="3" width="{this.panWidth}"/>
+				</mx:VBox>
+				<mx:HBox width="75%">
+					<mx:ProgressBar id="pb5" mode="event" width="100%"/>
+				</mx:HBox>
+			</mx:VBox>
+			<mx:VBox height="{this.row_height}" horizontalAlign="center" id="row6" styleName="outerBox" verticalAlign="middle" width="{this.outerW}" backgroundColor="#BFBFBF" cornerRadius="20" borderStyle="solid">
+				<mx:HBox width="40%">
+					<mx:Label text="Track 6:"/>
+					<mx:Label fontWeight="bold" id="track6Label" styleName="label1" text="Track6"/>
+				</mx:HBox>
+				<mx:VBox borderStyle="solid" height="{this.innerUpperH}" horizontalAlign="center" id="_VBox18" styleName="innerBox" width="{this.innerW}" backgroundColor="#FFFFFF">
+					<mx:Label styleName="label2" text="Volume"/>
+					<mx:VSlider change="{trackVol(6, t6_vol);}" id="t6_vol" labels="[0, 2, 4, 6, 8, 10]" maximum="10" minimum="0" tickInterval="5"/>
+					<mx:HRule width="80%"/>
+					<mx:CheckBox click="{muteTertiary(6, t6_vol, mute6);}" id="mute6" label="Mute"/>
+				</mx:VBox>
+				<mx:VBox borderStyle="solid" height="{this.innerLowerH}" horizontalAlign="center" id="_VBox19" styleName="innerBox" width="{this.innerW}" backgroundColor="#FFFFFF">
+					<mx:Label styleName="label2" text="Pan"/>
+					<mx:HSlider change="{setPan(6, t6_pan);}" id="t6_pan" labels="['L', 'C', 'R']" maximum="10" minimum="-10" tickInterval="3" width="{this.panWidth}"/>
+				</mx:VBox>
+				<mx:HBox width="75%">
+					<mx:ProgressBar id="pb6" mode="event" width="100%"/>
+				</mx:HBox>
+			</mx:VBox>
+		</mx:HBox>
+		<mx:HBox height="{this.buttonHeight * 1.25}" horizontalAlign="right" id="_HBox18" verticalAlign="middle" width="100%">
+			<mx:Button click="{resetAll();}" fontFamily="Verdana" label="Reset Controls"/>
+			<mx:Button click="{Alert.show(this.helpStr);}" id="helpB" label="Help"/>
+		</mx:HBox>		
+	</mx:Panel>
+
+	<mx:Style>
+        /*
+            //Warning: in this unregistered version, no Flex Script will be generated while exporting the Flex Project.
+        */
+	</mx:Style>
+</mx:Application>
