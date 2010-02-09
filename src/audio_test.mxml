@@ -754,7 +754,7 @@
 
     ]]></mx:Script>
 
-	<mx:Panel backgroundColor="#00656e8d" borderColor="9541811" borderStyle="solid" borderThickness="2" height="100%" id="main_panel" layout="vertical" width="100%">
+	<mx:Panel backgroundColor="#efefef" borderColor="#cccccc" borderStyle="solid" borderThickness="2" height="100%" id="main_panel" layout="vertical" width="100%">
 		<mx:VBox cornerRadius="0" horizontalAlign="center" verticalAlign="middle" width="100%">
 			<mx:HBox>
 				<mx:Label fontWeight="bold" id="title" styleName="h1" text="Audio Mixer"/>
