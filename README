@@ -7,3 +7,32 @@ This project contains the source code used for the Audio Mixer used on the Dagom
 Example here:
 https://wikis.uit.tufts.edu/confluence/display/DagombaDanceDrumming/Tora+Drum+Mixer
 
+Usage:
+======
+           
+<object classid="clsid:D27CDB6E-AE6D-11cf-96B8-444553540000" 
+ id="audio_test" width="100%" height="640"
+ codebase="http://fpdownload.macromedia.com/get/flashplayer/current/swflash.cab">
+
+<param name="movie" value="/audio_mixer.swf" />
+<param name="quality" value="high" />
+<param name="bgcolor" value="#ffffff" />
+<param name="allowScriptAccess" value="sameDomain" />
+<param name="flashVars" value='trackTitle=Tora&track1File=ToraLeadLun.mp3&track1Name=LL&track2File=ToraAnsLun1.mp3&track2Name=AL1&track3File=ToraAnsLun2.mp3&track3Name=AL2&track4File=ToraGungon.mp3&track4Name=LGG&track5File=ToraGungon2.mp3&track5Name=LGG2' />
+
+<embed src="/audio_mixer.swf" quality="high" bgcolor="#ffffff" width="100%" height="640" name="audio_test" align="middle" play="true" loop="false" quality="high" allowScriptAccess="sameDomain" type="application/x-shockwave-flash" pluginspage="http://www.adobe.com/go/getflashplayer" flashVars='trackTitle=Tora&track1File=ToraLeadLun.mp3&track1Name=LL&track2File=ToraAnsLun1.mp3&track2Name=AL1&track3File=ToraAnsLun2.mp3&track3Name=AL2&track4File=ToraGungon.mp3&track4Name=LGG&track5File=ToraGungon2.mp3&track5Name=LGG2'>
+</embed>
+</object>
+
+Valid Parameters:
+trackTitle - Display Title for overall track
+track1File - filename of track
+track1Name - Label for Track
+track2File - filename of track
+track2Name - Label for Track
+track3File - filename of track
+track3Name - Label for Track
+track4File - filename of track
+track4Name - Label for Track
+track5File - filename of track
+track5Name - Label for Track
